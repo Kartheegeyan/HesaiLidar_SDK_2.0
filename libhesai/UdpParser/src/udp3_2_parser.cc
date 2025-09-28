@@ -277,7 +277,12 @@ int Udp3_2Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32
       set_z(ptinfo, z); 
       set_ring(ptinfo, pointData.channel_index); 
       set_intensity(ptinfo, pointData.reflectivity);  
-      set_timestamp(ptinfo, double(packetData.t.sensor_timestamp) / kMicrosecondToSecond);
+      // Calculate per-point relative timestamp for LIO-SAM deskewing
+      // Use packet time relative to frame start + point timing offset
+      double packet_relative_time = (double(packetData.t.sensor_timestamp) / kMicrosecondToSecond) - frame.frame_start_timestamp;
+      double point_ns_offset_seconds = static_cast<double>(pointData.data.dQT.ns_offset) / kNanosecondToSecond;
+      double point_relative_time = packet_relative_time + point_ns_offset_seconds;
+      set_timestamp(ptinfo, point_relative_time);
       set_timeSecond(ptinfo, timestamp / kNanosecondToSecondInt);
       set_timeNanosecond(ptinfo, timestamp % kNanosecondToSecondInt);
       set_confidence(ptinfo, pointData.data.dQT.confidence);
